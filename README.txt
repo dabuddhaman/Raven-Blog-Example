@@ -1,0 +1,1 @@
+A simple RavenDB client implementing to Blog Database as shown at http://ayende.com/Blog/archive/2010/04/21/that-no-sql-thing-modeling-documents-in-a-document-database.aspx.

@@ -5,6 +5,8 @@ using System.Text;
 using Raven.Client.Document;
 using Raven.Client;
 using Raven.Database.Indexing;
+using Raven.Database.Data;
+using Newtonsoft.Json.Linq;
 
 namespace Raven.Sample.SimpleClient
 {
@@ -12,37 +14,42 @@ namespace Raven.Sample.SimpleClient
     {
         static void Main(string[] args)
         {
-			using (var documentStore = new DocumentStore { Url = "http://localhost:8080" })
+			using (var documentStore = new DocumentStore { Url = "http://localhost:8080" })            
             {
-            	documentStore.Initialise();                
-                documentStore.DatabaseCommands.PutIndex("PostsByTime",
-                                                       new IndexDefinition
-                                                       {
-                                                           Map = @"from post in docs.Posts
-                                                                    select new { post.PostedAt }"
-                                                       });
-                
-
-                documentStore.DatabaseCommands.PutIndex("TagCloud",
-                                                       new IndexDefinition
-                                                       {
-                                                           Map = @"from post in docs.Posts                                                                    
-                                                                    from Tag in post.Tags
-                                                                    select new { Tag, Count = 1 }",
-
-                                                           Reduce = @"from result in results
-                                                                    group result by result.Tag into g
-                                                                    select new { Tag = g.Key, Count = g.Sum(x => (long)x.Count) }"
-                                                       });
-                //documentStore.DatabaseCommands.DeleteIndex("TagCloud");
+            	documentStore.Initialise();                                                                
 
 			    using (var session = documentStore.OpenSession())
                 {
+                    //Only add the index if there are not posts in the database, i.e. the 1st time this is run!!
+                    if (session.Query<Post>().Count() == 0)
+                    {
+                        Console.WriteLine("First time usage, creating indexes");
+                        documentStore.DatabaseCommands.PutIndex("PostsByTime",
+                                                           new IndexDefinition
+                                                           {
+                                                               Map = @"from post in docs.Posts
+                                                                    select new { post.PostedAt }"
+                                                           });
+
+                        //documentStore.DatabaseCommands.DeleteIndex("TagCloud");
+                        documentStore.DatabaseCommands.PutIndex("TagCloud",
+                                                               new IndexDefinition
+                                                               {
+                                                                   Map = @"from post in docs.Posts                                                                    
+                                                                    from Tag in post.Tags
+                                                                    select new { Tag, Count = 1 }",
+
+                                                                   Reduce = @"from result in results
+                                                                    group result by result.Tag into g
+                                                                    select new { Tag = g.Key, Count = g.Sum(x => (long)x.Count) }"
+                                                               });
+                    }
+
                     session.Store(new Post { Title = "Title 1", PostedAt = RandomDateTime(), Tags = CreateTags("C#", ".NET") });
                     session.Store(new Post { Title = "Title 1", PostedAt = RandomDateTime(), Tags = CreateTags("C#", ".NET") });
                     session.Store(new Post { Title = "Title 1", PostedAt = RandomDateTime(), Tags = CreateTags("VB", "Java") });
                     session.Store(new Post { Title = "Title 1", PostedAt = RandomDateTime(), Tags = CreateTags("TDD", "Development") });
-				    session.SaveChanges();
+				    session.SaveChanges();                    
 
                     var orderedPosts = session
                         .Query<Post>("PostsByTime")
@@ -51,8 +58,8 @@ namespace Raven.Sample.SimpleClient
                         .ToArray();
 
                     Console.WriteLine("There are " + orderedPosts.Count() + " documents in the database :");
-                    //foreach (var post in orderedPosts)
-                    //    Console.WriteLine(post);
+                    foreach (var post in orderedPosts)
+                        Console.WriteLine(post);
                     Console.WriteLine("");
                     
                     var tagCloud = session

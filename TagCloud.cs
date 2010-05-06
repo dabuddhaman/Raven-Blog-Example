@@ -7,7 +7,7 @@ namespace Raven.Sample.SimpleClient
 {
     class TagCloud
     {
-        public string Id { get; set; }
+        //public string Id { get; set; }
         public string Tag { get; set; }
         public long Count { get; set; }
 
